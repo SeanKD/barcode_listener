@@ -21,6 +21,9 @@ class CodeScanListener extends StatefulWidget {
   final Widget child;
   final BarcodeScannedCallback? onBarcodeScanned;
   final Duration bufferDuration;
+  final preAmble = '93,91';
+  final postAmble = '13';
+  final splitToken = ',';
   final bool useKeyDownEvent;
   final SuffixType suffixType;
 
