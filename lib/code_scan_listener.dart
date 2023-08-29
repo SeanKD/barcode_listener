@@ -1,4 +1,6 @@
 library;
+// update this so the instead of using the bufferDuration it looks for all the keys between the preAmble and postAmble and then calls the callback with the result
+// the preAmble is ][ witch are ascii 93 and 91 split with the splitToken , and the postAmble is CR witch is ascii 13
 
 import 'dart:async';
 
@@ -9,7 +11,7 @@ import 'package:rxdart/rxdart.dart';
 
 typedef BarcodeScannedCallback = void Function(String barcode);
 
-const Duration _hundredMs = Duration(milliseconds: 100);
+//const Duration _hundredMs = Duration(milliseconds: 100);
 
 enum SuffixType { enter, tab }
 
@@ -20,7 +22,7 @@ enum SuffixType { enter, tab }
 class CodeScanListener extends StatefulWidget {
   final Widget child;
   final BarcodeScannedCallback? onBarcodeScanned;
-  final Duration bufferDuration;
+  //final Duration bufferDuration;
   final preAmble = '93,91';
   final postAmble = '13';
   final splitToken = ',';
@@ -45,7 +47,7 @@ class CodeScanListener extends StatefulWidget {
     /// Maximum time between two key events.
     /// If time between two key events is longer than this value
     /// previous keys will be ignored.
-    this.bufferDuration = _hundredMs,
+    //this.bufferDuration = _hundredMs,
 
     /// detect suffix type
     this.suffixType = SuffixType.enter,
@@ -72,7 +74,10 @@ class _CodeScanListenerState extends State<CodeScanListener> {
 
   DateTime? _lastScannedCharCodeTime;
 
+  // TODO wrap this in a preamble check
+
   bool _keyBoardCallback(KeyEvent keyEvent) {
+    if (keyEvent.character == "1" || keyEvent.character == "5" || keyEvent.character == "9"  || keyEvent.character == "9" ) {
     switch ((keyEvent, widget.useKeyDownEvent)) {
       case (KeyEvent(logicalKey: final key), _)
           when key.keyId > 255 && key != suffixKey:
@@ -93,7 +98,7 @@ class _CodeScanListenerState extends State<CodeScanListener> {
         _controller.sink.add(event.logicalKey.keyLabel);
         return false;
     }
-
+    }
     return false;
   }
 
@@ -107,8 +112,8 @@ class _CodeScanListenerState extends State<CodeScanListener> {
 
   void onKeyEvent(String char) {
     // remove any pending characters older than bufferDuration value
-    checkPendingCharCodesToClear();
-    _lastScannedCharCodeTime = clock.now();
+    //checkPendingCharCodesToClear();
+    //_lastScannedCharCodeTime = clock.now();
     if (char == suffix) {
       widget.onBarcodeScanned?.call(_scannedChars.join());
       resetScannedCharCodes();
@@ -118,6 +123,7 @@ class _CodeScanListenerState extends State<CodeScanListener> {
     }
   }
 
+/*
   void checkPendingCharCodesToClear() {
     if (_lastScannedCharCodeTime case final lastScanned?
         when lastScanned
@@ -125,6 +131,7 @@ class _CodeScanListenerState extends State<CodeScanListener> {
       resetScannedCharCodes();
     }
   }
+*/
 
   void resetScannedCharCodes() {
     _lastScannedCharCodeTime = null;

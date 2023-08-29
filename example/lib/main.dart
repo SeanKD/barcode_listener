@@ -52,7 +52,7 @@ class _MyHomePageState extends State<MyHomePage> {
           },
           key: const Key('visible-detector-key'),
           child: CodeScanListener(
-            bufferDuration: const Duration(milliseconds: 200),
+            //bufferDuration: const Duration(milliseconds: 20000),
             onBarcodeScanned: (barcode) {
               if (!visible) return;
               debugPrint(barcode);
