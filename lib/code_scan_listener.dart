@@ -1,6 +1,4 @@
 library;
-// update this so the instead of using the bufferDuration it looks for all the keys between the preAmble and postAmble and then calls the callback with the result
-// the preAmble is ][ witch are ascii 93 and 91 split with the splitToken , and the postAmble is CR witch is ascii 13
 
 import 'dart:async';
 
