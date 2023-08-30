@@ -14,6 +14,7 @@ typedef BarcodeScannedCallback = void Function(String barcode);
 //const Duration _hundredMs = Duration(milliseconds: 100);
 
 enum SuffixType { enter, tab }
+enum ScanState { idle, foundCloseBracket, foundOpenBracket }
 
 /// This widget will listen for raw PHYSICAL keyboard events　even when other controls have primary focus.
 /// It will buffer all characters coming in specifed `bufferDuration` time frame　that end with line feed character and call callback function with result.
@@ -28,6 +29,7 @@ class CodeScanListener extends StatefulWidget {
   final splitToken = ',';
   final bool useKeyDownEvent;
   final SuffixType suffixType;
+  
 
   /// This widget will listFren for raw PHYSICAL keyboard events　even when other controls have primary focus.
   /// It will buffer all characters coming in specifed `bufferDuration` time frame　that end with line feed character and call callback function with result.
@@ -58,6 +60,7 @@ class CodeScanListener extends StatefulWidget {
 }
 
 class _CodeScanListenerState extends State<CodeScanListener> {
+  ScanState currentScanState = ScanState.idle;
   late final suffixKey = switch (widget.suffixType) {
     SuffixType.enter => LogicalKeyboardKey.enter,
     SuffixType.tab => LogicalKeyboardKey.tab,
@@ -74,33 +77,70 @@ class _CodeScanListenerState extends State<CodeScanListener> {
 
   DateTime? _lastScannedCharCodeTime;
 
-  // TODO wrap this in a preamble check
 
-  bool _keyBoardCallback(KeyEvent keyEvent) {
-    if (keyEvent.character == "1" || keyEvent.character == "5" || keyEvent.character == "9"  || keyEvent.character == "9" ) {
+bool bufferStarted = false; 
+
+bool _keyBoardCallback(KeyEvent keyEvent) {
+  // If we've found ']' but the next character isn't '[', reset to idle state
+  if (currentScanState == ScanState.foundCloseBracket &&
+      !(keyEvent.character == "[" || keyEvent.logicalKey.keyId == 91)) {
+    currentScanState = ScanState.idle;
+    bufferStarted = false;  // Reset the buffer started flag
+  }
+
+  // Look for the ']' character
+  if (keyEvent.character == "]" || keyEvent.logicalKey.keyId == 93) {
+    currentScanState = ScanState.foundCloseBracket;
+    return false;
+  }
+
+  // If we've found ']' and the next character is '[', start buffering
+  if (currentScanState == ScanState.foundCloseBracket &&
+      (keyEvent.character == "[" || keyEvent.logicalKey.keyId == 91)) {
+    currentScanState = ScanState.foundOpenBracket;
+    bufferStarted = true;  // Set the buffer started flag
+    return false;
+  }
+
+
+  if (currentScanState == ScanState.foundOpenBracket) {
     switch ((keyEvent, widget.useKeyDownEvent)) {
       case (KeyEvent(logicalKey: final key), _)
           when key.keyId > 255 && key != suffixKey:
         return false;
       case (KeyUpEvent(logicalKey: final key), false) when key == suffixKey:
-        _controller.sink.add(suffix);
+        widget.onBarcodeScanned?.call(_scannedChars.join());
+        _scannedChars.clear();
+        currentScanState = ScanState.idle;
+        bufferStarted = false;  // Reset the buffer started flag
         return false;
-
       case (final KeyUpEvent event, false):
-        _controller.sink.add(event.logicalKey.keyLabel);
+        if (!bufferStarted || 
+            (bufferStarted && (event.logicalKey.keyId != 91 && event.logicalKey.keyId != 93))) {
+          _scannedChars.add(event.logicalKey.keyLabel);
+        }
+        bufferStarted = true;  // Now, we can start adding any character
         return false;
-
       case (KeyDownEvent(logicalKey: final key), true) when key == suffixKey:
-        _controller.sink.add(suffix);
+        widget.onBarcodeScanned?.call(_scannedChars.join());
+        _scannedChars.clear();
+        currentScanState = ScanState.idle;
+        bufferStarted = false;  // Reset the buffer started flag
         return false;
-
       case (final KeyDownEvent event, true):
-        _controller.sink.add(event.logicalKey.keyLabel);
+        if (!bufferStarted || 
+            (bufferStarted && (event.logicalKey.keyId != 91 && event.logicalKey.keyId != 93))) {
+          _scannedChars.add(event.logicalKey.keyLabel);
+        }
+        bufferStarted = true;  // Now, we can start adding any character
         return false;
     }
-    }
-    return false;
   }
+  return false;
+}
+
+
+
 
   @override
   void initState() {
