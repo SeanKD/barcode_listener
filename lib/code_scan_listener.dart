@@ -73,7 +73,7 @@ class _CodeScanListenerState extends State<CodeScanListener> {
   final _controller = StreamController<String?>();
   late StreamSubscription<String?> _keyboardSubscription;
 
-  DateTime? _lastScannedCharCodeTime;
+  //DateTime? _lastScannedCharCodeTime;
 
 
 bool bufferStarted = false; 
@@ -172,7 +172,7 @@ bool _keyBoardCallback(KeyEvent keyEvent) {
 */
 
   void resetScannedCharCodes() {
-    _lastScannedCharCodeTime = null;
+    //_lastScannedCharCodeTime = null;
     _scannedChars.clear();
   }
 
