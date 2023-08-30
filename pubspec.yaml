@@ -12,6 +12,7 @@ dependencies:
   flutter:
     sdk: flutter
   rxdart: ^0.27.7
+  shared_preferences: ^2.2.0
 
 dev_dependencies:
   checks: ^0.2.2

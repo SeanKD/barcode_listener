@@ -1,3 +1,9 @@
+// ToDo
+// add system preference for suffix and prefix
+// add a buffer / scan queue
+// add a timeout for the buffer? 
+// Queue idle time Enable Scan Queue
+
 library;
 
 import 'dart:async';
@@ -7,12 +13,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:rxdart/rxdart.dart';
 
+import 'package:shared_preferences/shared_preferences.dart';
+
 typedef BarcodeScannedCallback = void Function(String barcode);
 
 //const Duration _hundredMs = Duration(milliseconds: 100);
 
 enum SuffixType { enter, tab }
 enum ScanState { idle, foundCloseBracket, foundOpenBracket }
+
+Future<void> setSystemSetting(String key, String value) async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setString(key, value);
+}
 
 /// This widget will listen for raw PHYSICAL keyboard events　even when other controls have primary focus.
 /// It will buffer all characters coming in specifed `bufferDuration` time frame　that end with line feed character and call callback function with result.
@@ -188,4 +201,24 @@ bool _keyBoardCallback(KeyEvent keyEvent) {
     HardwareKeyboard.instance.removeHandler(_keyBoardCallback);
     super.dispose();
   }
+
+  List<List<dynamic>> asciiAndCharArray(String asciiStr) {
+    // Split the string into parts
+    List<String> parts = asciiStr.split(',');
+    
+    // Initialize an empty list to store the 2D array
+    List<List<dynamic>> result = [];
+    
+    // Loop through each part and convert it to its ASCII character
+    for (String part in parts) {
+      int codePoint = int.parse(part); // Convert the string to an integer
+      String char = String.fromCharCode(codePoint); // Convert the integer to its ASCII character
+      
+      // Append a list containing the ASCII code and the character to the result
+      result.add([codePoint, char]);
+    }
+    
+    return result;
+  }
+
 }
