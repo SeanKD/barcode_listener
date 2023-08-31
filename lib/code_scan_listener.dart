@@ -1,14 +1,14 @@
 // ToDo
-// add system preference for suffix and prefix
+// add system preference for suffix and prefix.
 // add a buffer / scan queue
-// add a timeout for the buffer? 
 // Queue idle time Enable Scan Queue
+
 
 library;
 
 import 'dart:async';
 
-import 'package:clock/clock.dart';
+//import 'package:clock/clock.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:rxdart/rxdart.dart';
@@ -22,28 +22,24 @@ typedef BarcodeScannedCallback = void Function(String barcode);
 enum SuffixType { enter, tab }
 enum ScanState { idle, foundCloseBracket, foundOpenBracket }
 
-Future<void> setSystemSetting(String key, String value) async {
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setString(key, value);
-}
 
 /// This widget will listen for raw PHYSICAL keyboard events　even when other controls have primary focus.
-/// It will buffer all characters coming in specifed `bufferDuration` time frame　that end with line feed character and call callback function with result.
+/// It will buffer all characters coming in specified `bufferDuration` time frame　that end with line feed character and call callback function with result.
 /// Keep in mind this widget will listen for events even when not visible.
-/// Windows seems to be using the [KeyDownEvent] instead of the [KeyUpEvent], this behaviour can be managed by setting [useKeyDownEvent].
+/// Windows seems to be using the [KeyDownEvent] instead of the [KeyUpEvent], this behavior can be managed by setting [useKeyDownEvent].
 class CodeScanListener extends StatefulWidget {
   final Widget child;
   final BarcodeScannedCallback? onBarcodeScanned;
   //final Duration bufferDuration;
-  final preAmble = '93,91';
-  final postAmble = '13';
-  final splitToken = ',';
   final bool useKeyDownEvent;
   final SuffixType suffixType;
+  //final String preAmble;
+  //final String postAmble;
+  final String splitToken = ',';
   
 
-  /// This widget will listFren for raw PHYSICAL keyboard events　even when other controls have primary focus.
-  /// It will buffer all characters coming in specifed `bufferDuration` time frame　that end with line feed character and call callback function with result.
+  /// This widget will listen for raw PHYSICAL keyboard events　even when other controls have primary focus.
+  /// It will buffer all characters coming in specified `bufferDuration` time frame　that end with line feed character and call callback function with result.
   /// Keep in mind this widget will listen for events even when not visible.
   const CodeScanListener({
     super.key,
@@ -54,7 +50,7 @@ class CodeScanListener extends StatefulWidget {
     /// Callback to be called when barcode is scanned.
     required this.onBarcodeScanned,
 
-    /// When experiencing issueswith empty barcodes on Windows,set this value to true. Default value is `false`.
+    /// When experiencing issues with empty barcode's on Windows,set this value to true. Default value is `false`.
     this.useKeyDownEvent = false,
 
     /// Maximum time between two key events.
@@ -64,6 +60,9 @@ class CodeScanListener extends StatefulWidget {
 
     /// detect suffix type
     this.suffixType = SuffixType.enter,
+
+    //required this.preAmble,
+    //required this.postAmble,
   });
 
   @override
@@ -71,6 +70,8 @@ class CodeScanListener extends StatefulWidget {
 }
 
 class _CodeScanListenerState extends State<CodeScanListener> {
+  String? preAmble;
+  String? postAmble;
   ScanState currentScanState = ScanState.idle;
   late final suffixKey = switch (widget.suffixType) {
     SuffixType.enter => LogicalKeyboardKey.enter,
@@ -150,23 +151,46 @@ bool _keyBoardCallback(KeyEvent keyEvent) {
   return false;
 }
 
-
-
-
   @override
   void initState() {
     HardwareKeyboard.instance.addHandler(_keyBoardCallback);
     _keyboardSubscription =
         _controller.stream.whereNotNull().listen(onKeyEvent);
     super.initState();
+    _readPreAndPostAmbleFromPreferences();
   }
+
+    void _readPreAndPostAmbleFromPreferences() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    setState(() {
+      preAmble = prefs.getString('preAmble') ?? "91,93";  // set a default value
+      postAmble = prefs.getString('postAmble') ?? "13";  // set a default value
+    });
+  }
+/*
+  void _savePreAndPostAmbleToPreferences(String preAmble, String postAmble) async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    prefs.setString('preAmble', preAmble);
+    prefs.setString('postAmble', postAmble);
+  }
+
+    // Add a method to update pre and postamble, and save it to preferences
+  void updatePreAndPostAmble(String newPreAmble, String newPostAmble) {
+    setState(() {
+      preAmble = newPreAmble;
+      postAmble = newPostAmble;
+    });
+    _savePreAndPostAmbleToPreferences(newPreAmble, newPostAmble);
+  }
+*/
 
   void onKeyEvent(String char) {
     // remove any pending characters older than bufferDuration value
     //checkPendingCharCodesToClear();
     //_lastScannedCharCodeTime = clock.now();
     if (char == suffix) {
-      widget.onBarcodeScanned?.call(_scannedChars.join());
+      // update this code to also send back the pre and post amble
+      widget.onBarcodeScanned?.call('{_scannedChars.join()}');
       resetScannedCharCodes();
     } else {
       // add character to list of scanned characters;
