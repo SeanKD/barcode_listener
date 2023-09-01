@@ -27,7 +27,7 @@ enum ScanState { idle, foundCloseBracket, foundOpenBracket }
 /// It will buffer all characters coming in specified `bufferDuration` time frame　that end with line feed character and call callback function with result.
 /// Keep in mind this widget will listen for events even when not visible.
 /// Windows seems to be using the [KeyDownEvent] instead of the [KeyUpEvent], this behavior can be managed by setting [useKeyDownEvent].
-class CodeScanListener extends StatefulWidget {
+class BarcodeListener extends StatefulWidget {
   final Widget child;
   final BarcodeScannedCallback? onBarcodeScanned;
   //final Duration bufferDuration;
@@ -41,7 +41,7 @@ class CodeScanListener extends StatefulWidget {
   /// This widget will listen for raw PHYSICAL keyboard events　even when other controls have primary focus.
   /// It will buffer all characters coming in specified `bufferDuration` time frame　that end with line feed character and call callback function with result.
   /// Keep in mind this widget will listen for events even when not visible.
-  const CodeScanListener({
+  const BarcodeListener({
     super.key,
 
     /// Child widget to be displayed.
@@ -66,10 +66,10 @@ class CodeScanListener extends StatefulWidget {
   });
 
   @override
-  State<CodeScanListener> createState() => _CodeScanListenerState();
+  State<BarcodeListener> createState() => _BarcodeListenerState();
 }
 
-class _CodeScanListenerState extends State<CodeScanListener> {
+class _BarcodeListenerState extends State<BarcodeListener> {
   String? preAmble;
   String? postAmble;
   ScanState currentScanState = ScanState.idle;
