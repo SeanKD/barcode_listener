@@ -1,5 +1,5 @@
+import 'package:barcode_listener/barcode_listener.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:code_scan_listener/barcode_listener.dart';
 import 'package:flutter/material.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 import 'second_screen.dart';

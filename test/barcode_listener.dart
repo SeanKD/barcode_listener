@@ -1,5 +1,5 @@
 import 'package:checks/checks.dart';
-import 'package:code_scan_listener/code_scan_listener.dart';
+import 'package:barcode_listener/barcode_listener.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -8,7 +8,7 @@ void main() {
   testWidgets('Test that onBarcodeScanned is working correctly',
       (tester) async {
     String? scannedBarcode;
-    await tester.pumpWidget(CodeScanListener(
+    await tester.pumpWidget(BarcodeListener(
       child: Container(),
       onBarcodeScanned: (barcode) => scannedBarcode = barcode,
     ));
@@ -33,7 +33,7 @@ void main() {
 
   testWidgets('Tab suffix', (tester) async {
     String? scannedBarcode;
-    await tester.pumpWidget(CodeScanListener(
+    await tester.pumpWidget(BarcodeListener(
       onBarcodeScanned: (barcode) => scannedBarcode = barcode,
       suffixType: SuffixType.tab,
       child: Container(),
