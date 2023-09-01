@@ -15,7 +15,7 @@ class MyApp extends StatelessWidget {
   final String preAmble;
   final String postAmble;
 
-  const MyApp({super.key, required this.preAmble, required this.postAmble});
+  const MyApp({Key? key, required this.preAmble, required this.postAmble}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -39,7 +39,7 @@ class MyHomePage extends StatefulWidget {
   final String preAmble;
   final String postAmble;
 
-  const MyHomePage({super.key, required this.title, required this.preAmble, required this.postAmble});
+  const MyHomePage({Key? key, required this.title, required this.preAmble, required this.postAmble}) : super(key: key);
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
@@ -51,10 +51,17 @@ class _MyHomePageState extends State<MyHomePage> {
   TextEditingController preAmbleController = TextEditingController();
   TextEditingController postAmbleController = TextEditingController();
 
-  _saveToPrefs() async {
+  void _saveToPrefs() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     prefs.setString('preAmble', preAmbleController.text);
     prefs.setString('postAmble', postAmbleController.text);
+  }
+
+  void _updateBarcodeListenerSettings() {
+    barcodeListenerKey.currentState?.updatePreAndPostAmble(
+      preAmbleController.text,
+      postAmbleController.text,
+    );
   }
 
   @override
@@ -64,53 +71,40 @@ class _MyHomePageState extends State<MyHomePage> {
         title: Text(widget.title),
       ),
       body: Center(
-        child: VisibilityDetector(
-          onVisibilityChanged: (VisibilityInfo info) {
-            visible = info.visibleFraction > 0;
+        child: BarcodeListener(
+          key: barcodeListenerKey,
+          onBarcodeScanned: (barcode) {
+            if (!visible) return;
+            debugPrint(barcode);
+            setState(() {
+              _barcode = barcode;
+            });
           },
-          key: const Key('visible-detector-key'),
-          child: BarcodeListener(
-            onBarcodeScanned: (barcode) {
-              if (!visible) return;
-              debugPrint(barcode);
-              setState(() {
-                _barcode = barcode;
-              });
-            },
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: <Widget>[
-                TextField(
-                  controller: preAmbleController,
-                  decoration: InputDecoration(labelText: "Pre-amble"),
-                ),
-                TextField(
-                  controller: postAmbleController,
-                  decoration: InputDecoration(labelText: "Post-amble"),
-                ),
-                ElevatedButton(
-                  onPressed: _saveToPrefs,
-                  child: Text("Save Preferences"),
-                ),
-                Text(
-                  _barcode == null ? 'SCAN BARCODE' : 'BARCODE: $_barcode',
-                  style: Theme.of(context).textTheme.headline6,
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(20.0),
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (BuildContext context) => const SecondScreen(),
-                      ),
-                    ),
-                    child: const Center(child: Text('Second screen')),
-                  ),
-                ),
-              ],
-            ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: <Widget>[
+              TextField(
+                controller: preAmbleController,
+                decoration: InputDecoration(labelText: "Pre-amble"),
+              ),
+              TextField(
+                controller: postAmbleController,
+                decoration: InputDecoration(labelText: "Post-amble"),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  _saveToPrefs();
+                  _updateBarcodeListenerSettings();
+                },
+                child: Text("Save Preferences"),
+              ),
+              Text(
+                _barcode == null ? 'SCAN BARCODE' : 'BARCODE: $_barcode',
+                style: Theme.of(context).textTheme.headline6,
+              ),
+              // ... (existing code)
+            ],
           ),
         ),
       ),

@@ -5,8 +5,9 @@
 
 
 library;
-
+// how do i use the shared preferences pre and post amble in the barcode listener?
 import 'dart:async';
+import 'dart:convert';
 
 //import 'package:clock/clock.dart';
 import 'package:flutter/material.dart';
@@ -22,6 +23,7 @@ typedef BarcodeScannedCallback = void Function(String barcode);
 enum SuffixType { enter, tab }
 enum ScanState { idle, foundCloseBracket, foundOpenBracket }
 
+final GlobalKey<_BarcodeListenerState> barcodeListenerKey = GlobalKey<_BarcodeListenerState>();
 
 /// This widget will listen for raw PHYSICAL keyboard events　even when other controls have primary focus.
 /// It will buffer all characters coming in specified `bufferDuration` time frame　that end with line feed character and call callback function with result.
@@ -73,6 +75,12 @@ class _BarcodeListenerState extends State<BarcodeListener> {
   String? preAmble;
   String? postAmble;
   ScanState currentScanState = ScanState.idle;
+  //late final LogicalKeyboardKey suffixKey;
+  //late final String suffix;
+  //final List<String> _scannedChars = [];
+  //final _controller = StreamController<String?>();
+  //late StreamSubscription<String?> _keyboardSubscription;
+  //bool bufferStarted = false;
   late final suffixKey = switch (widget.suffixType) {
     SuffixType.enter => LogicalKeyboardKey.enter,
     SuffixType.tab => LogicalKeyboardKey.tab,
@@ -93,6 +101,9 @@ class _BarcodeListenerState extends State<BarcodeListener> {
 bool bufferStarted = false; 
 
 bool _keyBoardCallback(KeyEvent keyEvent) {
+
+  var jsonAciiAndChar = jsonDecode(preAmble!);
+
   // If we've found ']' but the next character isn't '[', reset to idle state
   if (currentScanState == ScanState.foundCloseBracket &&
       !(keyEvent.character == "[" || keyEvent.logicalKey.keyId == 91)) {
@@ -106,7 +117,7 @@ bool _keyBoardCallback(KeyEvent keyEvent) {
     return false;
   }
 
-  // If we've found ']' and the next character is '[', start buffering
+  // If we've found ']' and the next character is '[', start buffering 
   if (currentScanState == ScanState.foundCloseBracket &&
       (keyEvent.character == "[" || keyEvent.logicalKey.keyId == 91)) {
     currentScanState = ScanState.foundOpenBracket;
@@ -160,21 +171,23 @@ bool _keyBoardCallback(KeyEvent keyEvent) {
     _readPreAndPostAmbleFromPreferences();
   }
 
-    void _readPreAndPostAmbleFromPreferences() async {
+  void _readPreAndPostAmbleFromPreferences() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
       preAmble = prefs.getString('preAmble') ?? "91,93";  // set a default value
       postAmble = prefs.getString('postAmble') ?? "13";  // set a default value
     });
   }
-/*
+
   void _savePreAndPostAmbleToPreferences(String preAmble, String postAmble) async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
-    prefs.setString('preAmble', preAmble);
+    var preAmbleAciiAndChar = asciiAndCharArray(preAmble);
+    String preAmblejsonAciiAndChar = jsonEncode(preAmbleAciiAndChar);
+    prefs.setString('preAmble', preAmblejsonAciiAndChar);
     prefs.setString('postAmble', postAmble);
   }
 
-    // Add a method to update pre and postamble, and save it to preferences
+
   void updatePreAndPostAmble(String newPreAmble, String newPostAmble) {
     setState(() {
       preAmble = newPreAmble;
@@ -182,7 +195,7 @@ bool _keyBoardCallback(KeyEvent keyEvent) {
     });
     _savePreAndPostAmbleToPreferences(newPreAmble, newPostAmble);
   }
-*/
+
 
   void onKeyEvent(String char) {
     // remove any pending characters older than bufferDuration value
@@ -226,23 +239,27 @@ bool _keyBoardCallback(KeyEvent keyEvent) {
     super.dispose();
   }
 
-  List<List<dynamic>> asciiAndCharArray(String asciiStr) {
+List<List<dynamic>> asciiAndCharArray(String asciiStr) {
+  // Initialize an empty list to store the 2D array
+  List<List<dynamic>> result = [];
+  
+  try {
     // Split the string into parts
     List<String> parts = asciiStr.split(',');
     
-    // Initialize an empty list to store the 2D array
-    List<List<dynamic>> result = [];
-    
     // Loop through each part and convert it to its ASCII character
     for (String part in parts) {
-      int codePoint = int.parse(part); // Convert the string to an integer
+      int codePoint = int.parse(part.trim()); // Convert the string to an integer
       String char = String.fromCharCode(codePoint); // Convert the integer to its ASCII character
       
       // Append a list containing the ASCII code and the character to the result
       result.add([codePoint, char]);
     }
-    
-    return result;
+  } catch (e) {
+    print("Error parsing ASCII string: $e");
   }
+
+  return result;
+}
 
 }
