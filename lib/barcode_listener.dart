@@ -1,15 +1,10 @@
 // ToDo
-// add system preference for suffix and prefix.
 // add a buffer / scan queue
 // Queue idle time Enable Scan Queue
-
-
 library;
-// how do i use the shared preferences pre and post amble in the barcode listener?
 import 'dart:async';
 import 'dart:convert';
 
-//import 'package:clock/clock.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:rxdart/rxdart.dart';
@@ -18,10 +13,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 typedef BarcodeScannedCallback = void Function(String barcode);
 
-//const Duration _hundredMs = Duration(milliseconds: 100);
-
 enum SuffixType { enter, tab }
-enum ScanState { idle, foundCloseBracket, foundOpenBracket }
+
 
 final GlobalKey<_BarcodeListenerState> barcodeListenerKey = GlobalKey<_BarcodeListenerState>();
 
@@ -32,11 +25,8 @@ final GlobalKey<_BarcodeListenerState> barcodeListenerKey = GlobalKey<_BarcodeLi
 class BarcodeListener extends StatefulWidget {
   final Widget child;
   final BarcodeScannedCallback? onBarcodeScanned;
-  //final Duration bufferDuration;
   final bool useKeyDownEvent;
   final SuffixType suffixType;
-  //final String preAmble;
-  //final String postAmble;
   final String splitToken = ',';
   
 
@@ -55,16 +45,7 @@ class BarcodeListener extends StatefulWidget {
     /// When experiencing issues with empty barcode's on Windows,set this value to true. Default value is `false`.
     this.useKeyDownEvent = false,
 
-    /// Maximum time between two key events.
-    /// If time between two key events is longer than this value
-    /// previous keys will be ignored.
-    //this.bufferDuration = _hundredMs,
-
-    /// detect suffix type
     this.suffixType = SuffixType.enter,
-
-    //required this.preAmble,
-    //required this.postAmble,
   });
 
   @override
@@ -72,15 +53,13 @@ class BarcodeListener extends StatefulWidget {
 }
 
 class _BarcodeListenerState extends State<BarcodeListener> {
-  String? preAmble;
-  String? postAmble;
-  ScanState currentScanState = ScanState.idle;
-  //late final LogicalKeyboardKey suffixKey;
-  //late final String suffix;
-  //final List<String> _scannedChars = [];
-  //final _controller = StreamController<String?>();
-  //late StreamSubscription<String?> _keyboardSubscription;
-  //bool bufferStarted = false;
+  List<List<dynamic>>? preAmble;
+  List<List<dynamic>>? postAmble;
+
+  int preAmbleIndex = 0;
+  int postAmbleIndex = 0;
+  bool hasData = false;
+  List<String> data = [];
   late final suffixKey = switch (widget.suffixType) {
     SuffixType.enter => LogicalKeyboardKey.enter,
     SuffixType.tab => LogicalKeyboardKey.tab,
@@ -95,71 +74,64 @@ class _BarcodeListenerState extends State<BarcodeListener> {
   final _controller = StreamController<String?>();
   late StreamSubscription<String?> _keyboardSubscription;
 
-  //DateTime? _lastScannedCharCodeTime;
-
-
 bool bufferStarted = false; 
 
+
 bool _keyBoardCallback(KeyEvent keyEvent) {
+    String? keyChar = keyEvent.character;
+    int? keyCode = keyEvent.logicalKey.keyId;
 
-  var jsonAciiAndChar = jsonDecode(preAmble!);
+    // Handle preAmble
+    if (preAmbleIndex < preAmble!.length && keyEvent is! KeyDownEvent) {
+      if (keyChar == preAmble![preAmbleIndex][1] || keyCode == preAmble![preAmbleIndex][0]) {
+        preAmbleIndex++;
+      } else {
+        preAmbleIndex = 0;
+      }
+      return false;
+    }
+/*
+    // Handle postAmble
+    if (postAmbleIndex < postAmble!.length) {
+      if (keyChar == postAmble![postAmbleIndex][1] || keyCode == postAmble![postAmbleIndex][0]) {
+        postAmbleIndex++;
+        if (postAmbleIndex == postAmble!.length) {
+          hasData = true;
+          widget.onBarcodeScanned?.call(data.join());
+          data = [];
+        }
+      } else {
+        postAmbleIndex = 0;
+      }
+      return false;
+    }
+*/
 
-  // If we've found ']' but the next character isn't '[', reset to idle state
-  if (currentScanState == ScanState.foundCloseBracket &&
-      !(keyEvent.character == "[" || keyEvent.logicalKey.keyId == 91)) {
-    currentScanState = ScanState.idle;
-    bufferStarted = false;  // Reset the buffer started flag
-  }
-
-  // Look for the ']' character
-  if (keyEvent.character == "]" || keyEvent.logicalKey.keyId == 93) {
-    currentScanState = ScanState.foundCloseBracket;
-    return false;
-  }
-
-  // If we've found ']' and the next character is '[', start buffering 
-  if (currentScanState == ScanState.foundCloseBracket &&
-      (keyEvent.character == "[" || keyEvent.logicalKey.keyId == 91)) {
-    currentScanState = ScanState.foundOpenBracket;
-    bufferStarted = true;  // Set the buffer started flag
-    return false;
-  }
-
-
-  if (currentScanState == ScanState.foundOpenBracket) {
+    if (preAmbleIndex == preAmble!.length) {
     switch ((keyEvent, widget.useKeyDownEvent)) {
       case (KeyEvent(logicalKey: final key), _)
           when key.keyId > 255 && key != suffixKey:
         return false;
       case (KeyUpEvent(logicalKey: final key), false) when key == suffixKey:
-        widget.onBarcodeScanned?.call(_scannedChars.join());
-        _scannedChars.clear();
-        currentScanState = ScanState.idle;
-        bufferStarted = false;  // Reset the buffer started flag
+        _controller.sink.add(suffix);
+        preAmbleIndex = 0;
         return false;
+
       case (final KeyUpEvent event, false):
-        if (!bufferStarted || 
-            (bufferStarted && (event.logicalKey.keyId != 91 && event.logicalKey.keyId != 93))) {
-          _scannedChars.add(event.logicalKey.keyLabel);
-        }
-        bufferStarted = true;  // Now, we can start adding any character
+        _controller.sink.add(event.logicalKey.keyLabel);
         return false;
+
       case (KeyDownEvent(logicalKey: final key), true) when key == suffixKey:
-        widget.onBarcodeScanned?.call(_scannedChars.join());
-        _scannedChars.clear();
-        currentScanState = ScanState.idle;
-        bufferStarted = false;  // Reset the buffer started flag
+        _controller.sink.add(suffix);
+        preAmbleIndex = 0;
         return false;
+
       case (final KeyDownEvent event, true):
-        if (!bufferStarted || 
-            (bufferStarted && (event.logicalKey.keyId != 91 && event.logicalKey.keyId != 93))) {
-          _scannedChars.add(event.logicalKey.keyLabel);
-        }
-        bufferStarted = true;  // Now, we can start adding any character
+        _controller.sink.add(event.logicalKey.keyLabel);
         return false;
     }
-  }
-  return false;
+    }
+    return false;
 }
 
   @override
@@ -173,37 +145,33 @@ bool _keyBoardCallback(KeyEvent keyEvent) {
 
   void _readPreAndPostAmbleFromPreferences() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
-    setState(() {
-      preAmble = prefs.getString('preAmble') ?? "91,93";  // set a default value
-      postAmble = prefs.getString('postAmble') ?? "13";  // set a default value
-    });
+    String preAmbleStr = prefs.getString('preAmble') ?? "[[93, \"]\"], [91, \"[\"]]";
+    preAmble = List<List<dynamic>>.from(jsonDecode(preAmbleStr));
   }
 
-  void _savePreAndPostAmbleToPreferences(String preAmble, String postAmble) async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    var preAmbleAciiAndChar = asciiAndCharArray(preAmble);
-    String preAmblejsonAciiAndChar = jsonEncode(preAmbleAciiAndChar);
-    prefs.setString('preAmble', preAmblejsonAciiAndChar);
-    prefs.setString('postAmble', postAmble);
-  }
+void updatePreAndPostAmble(String newPreAmble, String newPostAmble) {
+  List<List<dynamic>> convertedPreAmble = asciiAndCharArray(newPreAmble);
+  List<List<dynamic>> convertedPostAmble = asciiAndCharArray(newPostAmble);
 
+  setState(() {
+    preAmble = convertedPreAmble;
+    postAmble = convertedPostAmble;
+  });
 
-  void updatePreAndPostAmble(String newPreAmble, String newPostAmble) {
-    setState(() {
-      preAmble = newPreAmble;
-      postAmble = newPostAmble;
-    });
-    _savePreAndPostAmbleToPreferences(newPreAmble, newPostAmble);
-  }
+  _savePreAndPostAmbleToPreferences(convertedPreAmble, convertedPostAmble);
+}
 
+void _savePreAndPostAmbleToPreferences(List<List<dynamic>> preAmble, List<List<dynamic>> postAmble) async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  String preAmbleJson = jsonEncode(preAmble);
+  String postAmbleJson = jsonEncode(postAmble);
+  prefs.setString('preAmble', preAmbleJson);
+  prefs.setString('postAmble', postAmbleJson);
+}
 
   void onKeyEvent(String char) {
-    // remove any pending characters older than bufferDuration value
-    //checkPendingCharCodesToClear();
-    //_lastScannedCharCodeTime = clock.now();
     if (char == suffix) {
-      // update this code to also send back the pre and post amble
-      widget.onBarcodeScanned?.call('{_scannedChars.join()}');
+      widget.onBarcodeScanned?.call(_scannedChars.join());
       resetScannedCharCodes();
     } else {
       // add character to list of scanned characters;
@@ -211,18 +179,7 @@ bool _keyBoardCallback(KeyEvent keyEvent) {
     }
   }
 
-/*
-  void checkPendingCharCodesToClear() {
-    if (_lastScannedCharCodeTime case final lastScanned?
-        when lastScanned
-            .isBefore(clock.now().subtract(widget.bufferDuration))) {
-      resetScannedCharCodes();
-    }
-  }
-*/
-
   void resetScannedCharCodes() {
-    //_lastScannedCharCodeTime = null;
     _scannedChars.clear();
   }
 

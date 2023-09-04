@@ -2,7 +2,7 @@ import 'package:barcode_listener/barcode_listener.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
 import 'package:visibility_detector/visibility_detector.dart';
-import 'second_screen.dart';
+//import 'second_screen.dart';
 
 void main() async {
   SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -71,6 +71,11 @@ class _MyHomePageState extends State<MyHomePage> {
         title: Text(widget.title),
       ),
       body: Center(
+          child: VisibilityDetector(
+          onVisibilityChanged: (VisibilityInfo info) {
+            visible = info.visibleFraction > 0;
+          },
+        key: const Key('visible-detector-key'),
         child: BarcodeListener(
           key: barcodeListenerKey,
           onBarcodeScanned: (barcode) {
@@ -106,6 +111,7 @@ class _MyHomePageState extends State<MyHomePage> {
               // ... (existing code)
             ],
           ),
+        ),
         ),
       ),
     );
