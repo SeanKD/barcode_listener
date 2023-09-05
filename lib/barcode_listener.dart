@@ -1,6 +1,8 @@
 // ToDo
-// add a buffer / scan queue
-// Queue idle time Enable Scan Queue
+// add a Scan Queue and Queue idle time
+// use the Scan Queue form shared preference "EnableScanQueue" is set to Y
+// QueueIdleTime from shared preference
+
 library;
 import 'dart:async';
 import 'dart:convert';
@@ -13,7 +15,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 typedef BarcodeScannedCallback = void Function(String barcode);
 
-enum SuffixType { enter, tab }
+enum SuffixType {enter}
 
 
 final GlobalKey<_BarcodeListenerState> barcodeListenerKey = GlobalKey<_BarcodeListenerState>();
@@ -58,16 +60,15 @@ class _BarcodeListenerState extends State<BarcodeListener> {
 
   int preAmbleIndex = 0;
   int postAmbleIndex = 0;
-  bool hasData = false;
-  List<String> data = [];
+
   late final suffixKey = switch (widget.suffixType) {
     SuffixType.enter => LogicalKeyboardKey.enter,
-    SuffixType.tab => LogicalKeyboardKey.tab,
+
   };
 
   late final suffix = switch (widget.suffixType) {
     SuffixType.enter => '\n',
-    SuffixType.tab => '\t',
+
   };
 
   final List<String> _scannedChars = [];
@@ -78,11 +79,17 @@ bool bufferStarted = false;
 
 
 bool _keyBoardCallback(KeyEvent keyEvent) {
+    bool isCorrectEventType = (widget.useKeyDownEvent && keyEvent is KeyDownEvent) || 
+                            (!widget.useKeyDownEvent && keyEvent is KeyUpEvent);
+                       
+    if (!isCorrectEventType) {
+      return false;
+      }
+
     String? keyChar = keyEvent.character;
     int? keyCode = keyEvent.logicalKey.keyId;
 
-    // Handle preAmble
-    if (preAmbleIndex < preAmble!.length && keyEvent is! KeyDownEvent) {
+    if (preAmbleIndex < preAmble!.length) {
       if (keyChar == preAmble![preAmbleIndex][1] || keyCode == preAmble![preAmbleIndex][0]) {
         preAmbleIndex++;
       } else {
@@ -90,47 +97,27 @@ bool _keyBoardCallback(KeyEvent keyEvent) {
       }
       return false;
     }
-/*
-    // Handle postAmble
-    if (postAmbleIndex < postAmble!.length) {
-      if (keyChar == postAmble![postAmbleIndex][1] || keyCode == postAmble![postAmbleIndex][0]) {
-        postAmbleIndex++;
-        if (postAmbleIndex == postAmble!.length) {
-          hasData = true;
-          widget.onBarcodeScanned?.call(data.join());
-          data = [];
-        }
-      } else {
-        postAmbleIndex = 0;
-      }
-      return false;
-    }
-*/
 
     if (preAmbleIndex == preAmble!.length) {
-    switch ((keyEvent, widget.useKeyDownEvent)) {
-      case (KeyEvent(logicalKey: final key), _)
-          when key.keyId > 255 && key != suffixKey:
-        return false;
-      case (KeyUpEvent(logicalKey: final key), false) when key == suffixKey:
-        _controller.sink.add(suffix);
-        preAmbleIndex = 0;
-        return false;
-
-      case (final KeyUpEvent event, false):
-        _controller.sink.add(event.logicalKey.keyLabel);
-        return false;
-
-      case (KeyDownEvent(logicalKey: final key), true) when key == suffixKey:
-        _controller.sink.add(suffix);
-        preAmbleIndex = 0;
-        return false;
-
-      case (final KeyDownEvent event, true):
-        _controller.sink.add(event.logicalKey.keyLabel);
-        return false;
-    }
-    }
+      if (postAmbleIndex < postAmble!.length) {
+        if (keyChar == postAmble![postAmbleIndex][1] || keyCode == postAmble![postAmbleIndex][0] || keyCode == postAmble![postAmbleIndex][2]) {
+          postAmbleIndex++;
+          if (postAmbleIndex == postAmble!.length) {
+            _controller.sink.add(suffix);
+            postAmbleIndex = 0;
+            preAmbleIndex = 0;
+            return false;
+          }
+        } else {
+          if (keyEvent.logicalKey.keyId > 255 && keyEvent.logicalKey != suffixKey) {
+            return false;
+            } else {
+              _controller.sink.add(keyEvent.logicalKey.keyLabel);
+              return false;
+              }
+            }
+          }
+        }
     return false;
 }
 
@@ -147,6 +134,9 @@ bool _keyBoardCallback(KeyEvent keyEvent) {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     String preAmbleStr = prefs.getString('preAmble') ?? "[[93, \"]\"], [91, \"[\"]]";
     preAmble = List<List<dynamic>>.from(jsonDecode(preAmbleStr));
+
+    String postAmbleStr = prefs.getString('postAmble') ?? "[[13,\"\r\"]]";
+    postAmble = List<List<dynamic>>.from(jsonDecode(postAmbleStr));
   }
 
 void updatePreAndPostAmble(String newPreAmble, String newPostAmble) {
@@ -197,20 +187,40 @@ void _savePreAndPostAmbleToPreferences(List<List<dynamic>> preAmble, List<List<d
   }
 
 List<List<dynamic>> asciiAndCharArray(String asciiStr) {
-  // Initialize an empty list to store the 2D array
   List<List<dynamic>> result = [];
-  
+
   try {
-    // Split the string into parts
     List<String> parts = asciiStr.split(',');
-    
-    // Loop through each part and convert it to its ASCII character
+
     for (String part in parts) {
       int codePoint = int.parse(part.trim()); // Convert the string to an integer
       String char = String.fromCharCode(codePoint); // Convert the integer to its ASCII character
       
-      // Append a list containing the ASCII code and the character to the result
-      result.add([codePoint, char]);
+      int? keyId;
+
+      if (codePoint >= 32 && codePoint <= 126) {
+        // printable ASCII characters
+        keyId = codePoint;
+      } else {
+        // For special keys
+        switch (codePoint) {
+          case 9:
+            keyId = LogicalKeyboardKey.tab.keyId;
+            break;
+          case 10:
+            keyId = LogicalKeyboardKey.enter.keyId;
+            break;
+          case 13:
+            keyId = LogicalKeyboardKey.enter.keyId;
+            break;
+          default:
+            print("Unknown key for ASCII code $codePoint");
+        }
+      }
+
+      if (keyId != null) {
+        result.add([codePoint, char, keyId]);
+      }
     }
   } catch (e) {
     print("Error parsing ASCII string: $e");
@@ -218,5 +228,6 @@ List<List<dynamic>> asciiAndCharArray(String asciiStr) {
 
   return result;
 }
+
 
 }

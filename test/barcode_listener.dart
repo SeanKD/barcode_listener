@@ -35,7 +35,7 @@ void main() {
     String? scannedBarcode;
     await tester.pumpWidget(BarcodeListener(
       onBarcodeScanned: (barcode) => scannedBarcode = barcode,
-      suffixType: SuffixType.tab,
+      suffixType: SuffixType.enter,
       child: Container(),
     ));
     await tester.sendKeyEvent(LogicalKeyboardKey.digit1);
