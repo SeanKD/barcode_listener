@@ -5,6 +5,7 @@ import 'package:visibility_detector/visibility_detector.dart';
 //import 'second_screen.dart';
 
 void main() async {
+  WidgetsFlutterBinding.ensureInitialized(); // Initialize the binding
   SharedPreferences prefs = await SharedPreferences.getInstance();
   String preAmble = prefs.getString('preAmble') ?? "";
   String postAmble = prefs.getString('postAmble') ?? "";

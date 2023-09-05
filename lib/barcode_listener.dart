@@ -130,14 +130,24 @@ bool _keyBoardCallback(KeyEvent keyEvent) {
     _readPreAndPostAmbleFromPreferences();
   }
 
-  void _readPreAndPostAmbleFromPreferences() async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    String preAmbleStr = prefs.getString('preAmble') ?? "[[93, \"]\"], [91, \"[\"]]";
+void _readPreAndPostAmbleFromPreferences() async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  String preAmbleStr = prefs.getString('preAmble') ?? "[[93, \"]\"], [91, \"[\"]]";
+  try {
     preAmble = List<List<dynamic>>.from(jsonDecode(preAmbleStr));
-
-    String postAmbleStr = prefs.getString('postAmble') ?? "[[13,\"\r\"]]";
-    postAmble = List<List<dynamic>>.from(jsonDecode(postAmbleStr));
+  } catch (e) {
+    print("Error decoding preAmble: $e");
+    preAmble = [];
   }
+
+  String postAmbleStr = prefs.getString('postAmble') ?? "[[13,\"\\r\"]]";
+  try {
+    postAmble = List<List<dynamic>>.from(jsonDecode(postAmbleStr));
+  } catch (e) {
+    print("Error decoding postAmble: $e");
+    postAmble = []; // or some default value
+  }
+}
 
 void updatePreAndPostAmble(String newPreAmble, String newPostAmble) {
   List<List<dynamic>> convertedPreAmble = asciiAndCharArray(newPreAmble);
@@ -185,7 +195,7 @@ void _savePreAndPostAmbleToPreferences(List<List<dynamic>> preAmble, List<List<d
     HardwareKeyboard.instance.removeHandler(_keyBoardCallback);
     super.dispose();
   }
-
+// 
 List<List<dynamic>> asciiAndCharArray(String asciiStr) {
   List<List<dynamic>> result = [];
 
@@ -193,7 +203,20 @@ List<List<dynamic>> asciiAndCharArray(String asciiStr) {
     List<String> parts = asciiStr.split(',');
 
     for (String part in parts) {
-      int codePoint = int.parse(part.trim()); // Convert the string to an integer
+      String trimmedPart = part.trim();
+      if (trimmedPart.isEmpty) {
+        print("Warning: Encountered an empty part after splitting and trimming.");
+        continue;
+      }
+
+      int? codePoint;
+      try {
+        codePoint = int.parse(trimmedPart); // Convert the string to an integer
+      } catch (e) {
+        print("Error parsing part '$trimmedPart' to integer: $e");
+        continue;
+      }
+
       String char = String.fromCharCode(codePoint); // Convert the integer to its ASCII character
       
       int? keyId;
@@ -228,6 +251,6 @@ List<List<dynamic>> asciiAndCharArray(String asciiStr) {
 
   return result;
 }
-
+                  
 
 }
