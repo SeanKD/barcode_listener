@@ -57,7 +57,8 @@ class BarcodeListener extends StatefulWidget {
 class _BarcodeListenerState extends State<BarcodeListener> {
   List<List<dynamic>>? preAmble;
   List<List<dynamic>>? postAmble;
-
+  final List<String> _barcodeQueue = [];
+  Timer? _queueTimer;
   int preAmbleIndex = 0;
   int postAmbleIndex = 0;
 
@@ -129,10 +130,10 @@ bool _keyBoardCallback(KeyEvent keyEvent) {
     super.initState();
     _readPreAndPostAmbleFromPreferences();
   }
-
+// "[[93,"]",93],[91,"[",91]]"  "[[13,"\r",4294967309]]"  
 void _readPreAndPostAmbleFromPreferences() async {
   final SharedPreferences prefs = await SharedPreferences.getInstance();
-  String preAmbleStr = prefs.getString('preAmble') ?? "[[93, \"]\"], [91, \"[\"]]";
+  String preAmbleStr = prefs.getString('preAmble') ?? "[[93,\"\\\"]\",93],[91,\"[\",91]]";
   try {
     preAmble = List<List<dynamic>>.from(jsonDecode(preAmbleStr));
   } catch (e) {
@@ -140,7 +141,7 @@ void _readPreAndPostAmbleFromPreferences() async {
     preAmble = [];
   }
 
-  String postAmbleStr = prefs.getString('postAmble') ?? "[[13,\"\\r\"]]";
+  String postAmbleStr = prefs.getString('postAmble') ?? "[[13,\"\\r\",4294967309]]";
   try {
     postAmble = List<List<dynamic>>.from(jsonDecode(postAmbleStr));
   } catch (e) {
@@ -171,12 +172,30 @@ void _savePreAndPostAmbleToPreferences(List<List<dynamic>> preAmble, List<List<d
 
   void onKeyEvent(String char) {
     if (char == suffix) {
-      widget.onBarcodeScanned?.call(_scannedChars.join());
+      String barcode = _scannedChars.join();
+      _addBarcodeToQueue(barcode);  // Call the new method here
       resetScannedCharCodes();
     } else {
       // add character to list of scanned characters;
       _scannedChars.add(char);
     }
+  }
+
+    void _addBarcodeToQueue(String barcode) {
+    _barcodeQueue.add(barcode);
+    _queueTimer ??= Timer.periodic(const Duration(milliseconds: 100), (timer) {
+      if (_barcodeQueue.isNotEmpty) {
+        handleSubmit();
+      } else {
+        timer.cancel();
+        _queueTimer = null;
+      }
+    });
+  }
+
+  void handleSubmit() {
+    String barcode = _barcodeQueue.removeAt(0);  // Dequeue the first barcode
+    widget.onBarcodeScanned?.call(barcode);
   }
 
   void resetScannedCharCodes() {
@@ -190,6 +209,7 @@ void _savePreAndPostAmbleToPreferences(List<List<dynamic>> preAmble, List<List<d
 
   @override
   void dispose() {
+    _queueTimer?.cancel();
     _keyboardSubscription.cancel();
     _controller.close();
     HardwareKeyboard.instance.removeHandler(_keyBoardCallback);
@@ -206,6 +226,7 @@ List<List<dynamic>> asciiAndCharArray(String asciiStr) {
       String trimmedPart = part.trim();
       if (trimmedPart.isEmpty) {
         print("Warning: Encountered an empty part after splitting and trimming.");
+
         continue;
       }
 
