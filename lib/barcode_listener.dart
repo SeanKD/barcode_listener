@@ -130,45 +130,45 @@ bool _keyBoardCallback(KeyEvent keyEvent) {
     super.initState();
     _readPreAndPostAmbleFromPreferences();
   }
-// "[[93,"]",93],[91,"[",91]]"  "[[13,"\r",4294967309]]"  
-void _readPreAndPostAmbleFromPreferences() async {
-  final SharedPreferences prefs = await SharedPreferences.getInstance();
-  String preAmbleStr = prefs.getString('preAmble') ?? "[[93,\"\\\"]\",93],[91,\"[\",91]]";
-  try {
-    preAmble = List<List<dynamic>>.from(jsonDecode(preAmbleStr));
-  } catch (e) {
-    print("Error decoding preAmble: $e");
-    preAmble = [];
+
+  void _readPreAndPostAmbleFromPreferences() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    String preAmbleStr = prefs.getString('preAmble') ?? "[[93,\"\\\"]\",93],[91,\"[\",91]]";
+    try {
+      preAmble = List<List<dynamic>>.from(jsonDecode(preAmbleStr));
+    } catch (e) {
+      print("Error decoding preAmble: $e");
+      preAmble = [];
+    }
+
+    String postAmbleStr = prefs.getString('postAmble') ?? "[[13,\"\\r\",4294967309]]";
+    try {
+      postAmble = List<List<dynamic>>.from(jsonDecode(postAmbleStr));
+    } catch (e) {
+      print("Error decoding postAmble: $e");
+      postAmble = []; // or some default value
+    }
   }
 
-  String postAmbleStr = prefs.getString('postAmble') ?? "[[13,\"\\r\",4294967309]]";
-  try {
-    postAmble = List<List<dynamic>>.from(jsonDecode(postAmbleStr));
-  } catch (e) {
-    print("Error decoding postAmble: $e");
-    postAmble = []; // or some default value
+  void updatePreAndPostAmble(String newPreAmble, String newPostAmble) {
+    List<List<dynamic>> convertedPreAmble = asciiAndCharArray(newPreAmble);
+    List<List<dynamic>> convertedPostAmble = asciiAndCharArray(newPostAmble);
+
+    setState(() {
+      preAmble = convertedPreAmble;
+      postAmble = convertedPostAmble;
+    });
+
+    _savePreAndPostAmbleToPreferences(convertedPreAmble, convertedPostAmble);
   }
-}
 
-void updatePreAndPostAmble(String newPreAmble, String newPostAmble) {
-  List<List<dynamic>> convertedPreAmble = asciiAndCharArray(newPreAmble);
-  List<List<dynamic>> convertedPostAmble = asciiAndCharArray(newPostAmble);
-
-  setState(() {
-    preAmble = convertedPreAmble;
-    postAmble = convertedPostAmble;
-  });
-
-  _savePreAndPostAmbleToPreferences(convertedPreAmble, convertedPostAmble);
-}
-
-void _savePreAndPostAmbleToPreferences(List<List<dynamic>> preAmble, List<List<dynamic>> postAmble) async {
-  final SharedPreferences prefs = await SharedPreferences.getInstance();
-  String preAmbleJson = jsonEncode(preAmble);
-  String postAmbleJson = jsonEncode(postAmble);
-  prefs.setString('preAmble', preAmbleJson);
-  prefs.setString('postAmble', postAmbleJson);
-}
+  void _savePreAndPostAmbleToPreferences(List<List<dynamic>> preAmble, List<List<dynamic>> postAmble) async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    String preAmbleJson = jsonEncode(preAmble);
+    String postAmbleJson = jsonEncode(postAmble);
+    prefs.setString('preAmble', preAmbleJson);
+    prefs.setString('postAmble', postAmbleJson);
+  }
 
   void onKeyEvent(String char) {
     if (char == suffix) {
@@ -181,7 +181,7 @@ void _savePreAndPostAmbleToPreferences(List<List<dynamic>> preAmble, List<List<d
     }
   }
 
-    void _addBarcodeToQueue(String barcode) {
+  void _addBarcodeToQueue(String barcode) {
     _barcodeQueue.add(barcode);
     _queueTimer ??= Timer.periodic(const Duration(milliseconds: 100), (timer) {
       if (_barcodeQueue.isNotEmpty) {
@@ -215,63 +215,62 @@ void _savePreAndPostAmbleToPreferences(List<List<dynamic>> preAmble, List<List<d
     HardwareKeyboard.instance.removeHandler(_keyBoardCallback);
     super.dispose();
   }
-// 
-List<List<dynamic>> asciiAndCharArray(String asciiStr) {
-  List<List<dynamic>> result = [];
 
-  try {
-    List<String> parts = asciiStr.split(',');
+  List<List<dynamic>> asciiAndCharArray(String asciiStr) {
+    List<List<dynamic>> result = [];
 
-    for (String part in parts) {
-      String trimmedPart = part.trim();
-      if (trimmedPart.isEmpty) {
-        print("Warning: Encountered an empty part after splitting and trimming.");
+    try {
+      List<String> parts = asciiStr.split(',');
 
-        continue;
-      }
+      for (String part in parts) {
+        String trimmedPart = part.trim();
+        if (trimmedPart.isEmpty) {
+          print("Warning: Encountered an empty part after splitting and trimming.");
 
-      int? codePoint;
-      try {
-        codePoint = int.parse(trimmedPart); // Convert the string to an integer
-      } catch (e) {
-        print("Error parsing part '$trimmedPart' to integer: $e");
-        continue;
-      }
+          continue;
+        }
 
-      String char = String.fromCharCode(codePoint); // Convert the integer to its ASCII character
-      
-      int? keyId;
+        int? codePoint;
+        try {
+          codePoint = int.parse(trimmedPart); // Convert the string to an integer
+        } catch (e) {
+          print("Error parsing part '$trimmedPart' to integer: $e");
+          continue;
+        }
 
-      if (codePoint >= 32 && codePoint <= 126) {
-        // printable ASCII characters
-        keyId = codePoint;
-      } else {
-        // For special keys
-        switch (codePoint) {
-          case 9:
-            keyId = LogicalKeyboardKey.tab.keyId;
-            break;
-          case 10:
-            keyId = LogicalKeyboardKey.enter.keyId;
-            break;
-          case 13:
-            keyId = LogicalKeyboardKey.enter.keyId;
-            break;
-          default:
-            print("Unknown key for ASCII code $codePoint");
+        String char = String.fromCharCode(codePoint); // Convert the integer to its ASCII character
+        
+        int? keyId;
+
+        if (codePoint >= 32 && codePoint <= 126) {
+          // printable ASCII characters
+          keyId = codePoint;
+        } else {
+          // For special keys
+          switch (codePoint) {
+            case 9:
+              keyId = LogicalKeyboardKey.tab.keyId;
+              break;
+            case 10:
+              keyId = LogicalKeyboardKey.enter.keyId;
+              break;
+            case 13:
+              keyId = LogicalKeyboardKey.enter.keyId;
+              break;
+            default:
+              print("Unknown key for ASCII code $codePoint");
+          }
+        }
+
+        if (keyId != null) {
+          result.add([codePoint, char, keyId]);
         }
       }
-
-      if (keyId != null) {
-        result.add([codePoint, char, keyId]);
-      }
+    } catch (e) {
+      print("Error parsing ASCII string: $e");
     }
-  } catch (e) {
-    print("Error parsing ASCII string: $e");
+
+    return result;
   }
-
-  return result;
-}
-                  
-
+  
 }
