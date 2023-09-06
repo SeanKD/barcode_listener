@@ -80,47 +80,52 @@ bool bufferStarted = false;
 
 
 bool _keyBoardCallback(KeyEvent keyEvent) {
-    bool isCorrectEventType = (widget.useKeyDownEvent && keyEvent is KeyDownEvent) || 
+  bool isCorrectEventType = (widget.useKeyDownEvent && keyEvent is KeyDownEvent) || 
                             (!widget.useKeyDownEvent && keyEvent is KeyUpEvent);
                        
-    if (!isCorrectEventType) {
-      return false;
-      }
-
-    String? keyChar = keyEvent.character;
-    int? keyCode = keyEvent.logicalKey.keyId;
-
-    if (preAmbleIndex < preAmble!.length) {
-      if (keyChar == preAmble![preAmbleIndex][1] || keyCode == preAmble![preAmbleIndex][0]) {
-        preAmbleIndex++;
-      } else {
-        preAmbleIndex = 0;
-      }
-      return false;
-    }
-
-    if (preAmbleIndex == preAmble!.length) {
-      if (postAmbleIndex < postAmble!.length) {
-        if (keyChar == postAmble![postAmbleIndex][1] || keyCode == postAmble![postAmbleIndex][0] || keyCode == postAmble![postAmbleIndex][2]) {
-          postAmbleIndex++;
-          if (postAmbleIndex == postAmble!.length) {
-            _controller.sink.add(suffix);
-            postAmbleIndex = 0;
-            preAmbleIndex = 0;
-            return false;
-          }
-        } else {
-          if (keyEvent.logicalKey.keyId > 255 && keyEvent.logicalKey != suffixKey) {
-            return false;
-            } else {
-              _controller.sink.add(keyEvent.logicalKey.keyLabel);
-              return false;
-              }
-            }
-          }
-        }
+  if (!isCorrectEventType) {
     return false;
+  }
+
+  String? keyChar = keyEvent.character;
+  int? keyCode = keyEvent.logicalKey.keyId;
+
+  // Check preAmble sequence
+  if (preAmbleIndex < preAmble!.length) {
+    if (keyChar == preAmble![preAmbleIndex][1] || keyCode == preAmble![preAmbleIndex][0] || keyCode == preAmble![preAmbleIndex][2]) {
+      preAmbleIndex++;
+    } else {
+      preAmbleIndex = 0; 
+    }
+    return false;
+  }
+
+  // Check postAmble sequence if preAmble was successfully detected
+  if (preAmbleIndex == preAmble!.length) {
+    if (postAmbleIndex < postAmble!.length) {
+      if (keyChar == postAmble![postAmbleIndex][1] || keyCode == postAmble![postAmbleIndex][0] || keyCode == postAmble![postAmbleIndex][2]) {
+        postAmbleIndex++;
+        if (postAmbleIndex == postAmble!.length) {
+          _controller.sink.add(suffix);
+          postAmbleIndex = 0;
+          preAmbleIndex = 0;
+          return false;
+        }
+      } else {
+        postAmbleIndex = 0;
+        
+        if (keyEvent.logicalKey.keyId > 255 && keyEvent.logicalKey != suffixKey) {
+          return false;
+        } else {
+          _controller.sink.add(keyEvent.logicalKey.keyLabel);
+          return false;
+        }
+      }
+    }
+  }
+  return false;
 }
+
 
   @override
   void initState() {
@@ -272,5 +277,5 @@ bool _keyBoardCallback(KeyEvent keyEvent) {
 
     return result;
   }
-  
+
 }
