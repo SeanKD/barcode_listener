@@ -1,8 +1,4 @@
-// ToDo
-// add a Scan Queue and Queue idle time
-// use the Scan Queue form shared preference "EnableScanQueue" is set to Y
-// QueueIdleTime from shared preference
-
+// on some devices this does not read keys properly with out closing and reopening the app
 library;
 import 'dart:async';
 import 'dart:convert';
@@ -80,6 +76,8 @@ bool bufferStarted = false;
 
 
 bool _keyBoardCallback(KeyEvent keyEvent) {
+  debugPrint('KeyEvent: $keyEvent');
+
   bool isCorrectEventType = (widget.useKeyDownEvent && keyEvent is KeyDownEvent) || 
                             (!widget.useKeyDownEvent && keyEvent is KeyUpEvent);
                        
@@ -109,7 +107,7 @@ bool _keyBoardCallback(KeyEvent keyEvent) {
           _controller.sink.add(suffix);
           postAmbleIndex = 0;
           preAmbleIndex = 0;
-          return false;
+          return true;
         }
       } else {
         postAmbleIndex = 0;
@@ -118,7 +116,7 @@ bool _keyBoardCallback(KeyEvent keyEvent) {
           return false;
         } else {
           _controller.sink.add(keyEvent.logicalKey.keyLabel);
-          return false;
+          return true;
         }
       }
     }
@@ -129,9 +127,9 @@ bool _keyBoardCallback(KeyEvent keyEvent) {
 
   @override
   void initState() {
+    //ServicesBinding.instance.keyboard.addHandler(_keyBoardCallback);
     HardwareKeyboard.instance.addHandler(_keyBoardCallback);
-    _keyboardSubscription =
-        _controller.stream.whereNotNull().listen(onKeyEvent);
+    _keyboardSubscription = _controller.stream.whereNotNull().listen(onKeyEvent);
     super.initState();
     _readPreAndPostAmbleFromPreferences();
   }
