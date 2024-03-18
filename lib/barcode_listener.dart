@@ -140,7 +140,7 @@ bool _keyBoardCallback(KeyEvent keyEvent) {
     try {
       preAmble = List<List<dynamic>>.from(jsonDecode(preAmbleStr));
     } catch (e) {
-      print("Error decoding preAmble: $e");
+      //print("Error decoding preAmble: $e");
       preAmble = [];
     }
 
@@ -148,7 +148,7 @@ bool _keyBoardCallback(KeyEvent keyEvent) {
     try {
       postAmble = List<List<dynamic>>.from(jsonDecode(postAmbleStr));
     } catch (e) {
-      print("Error decoding postAmble: $e");
+      //print("Error decoding postAmble: $e");
       postAmble = []; // or some default value
     }
   }
@@ -228,7 +228,7 @@ bool _keyBoardCallback(KeyEvent keyEvent) {
       for (String part in parts) {
         String trimmedPart = part.trim();
         if (trimmedPart.isEmpty) {
-          print("Warning: Encountered an empty part after splitting and trimming.");
+          //print("Warning: Encountered an empty part after splitting and trimming.");
 
           continue;
         }
@@ -237,7 +237,7 @@ bool _keyBoardCallback(KeyEvent keyEvent) {
         try {
           codePoint = int.parse(trimmedPart); // Convert the string to an integer
         } catch (e) {
-          print("Error parsing part '$trimmedPart' to integer: $e");
+          //print("Error parsing part '$trimmedPart' to integer: $e");
           continue;
         }
 
@@ -261,7 +261,7 @@ bool _keyBoardCallback(KeyEvent keyEvent) {
               keyId = LogicalKeyboardKey.enter.keyId;
               break;
             default:
-              print("Unknown key for ASCII code $codePoint");
+              //print("Unknown key for ASCII code $codePoint");
           }
         }
 
@@ -270,7 +270,7 @@ bool _keyBoardCallback(KeyEvent keyEvent) {
         }
       }
     } catch (e) {
-      print("Error parsing ASCII string: $e");
+      //print("Error parsing ASCII string: $e");
     }
 
     return result;
