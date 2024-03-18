@@ -1,4 +1,3 @@
-// on some devices this does not read keys properly with out closing and reopening the app
 library;
 import 'dart:async';
 import 'dart:convert';
